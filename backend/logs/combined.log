@@ -240,3 +240,46 @@
 {"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.780 ms - 51\u001b[0m","timestamp":"2026-06-15 22:46:16"}
 {"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.674 ms - 51\u001b[0m","timestamp":"2026-06-15 22:46:16"}
 {"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 22:48:00"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 22:56:26"}
+{"level":"error","message":"Failed to launch Telegram Bot: FetchError: request to https://api.telegram.org/bot8906906780:[REDACTED]/getMe failed, reason: \n    at ClientRequest.<anonymous> (/home/identitynull/Documents/IT/Future/presention-bot/backend/node_modules/node-fetch/lib/index.js:1501:11)\n    at ClientRequest.emit (node:events:518:28)\n    at emitErrorEvent (node:_http_client:104:11)\n    at TLSSocket.socketErrorListener (node:_http_client:518:5)\n    at TLSSocket.emit (node:events:518:28)\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {\n  type: 'system',\n  errno: 'ETIMEDOUT',\n  code: 'ETIMEDOUT'\n}","timestamp":"2026-06-15 22:56:26"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 22:56:29"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 22:56:31"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 22:56:39"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 22:56:41"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 22:56:43"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 22:56:46"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:04:14"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:04:20"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:04:23"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 23:04:24"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:04:28"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:04:30"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:04:33"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 23:04:34"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:04:37"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:04:39"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:04:42"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:04:44"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:04:45"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:07:18"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:07:21"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:07:23"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 23:07:43"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:07:51"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:07:53"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:07:55"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:09:47"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:09:49"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:09:51"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 23:10:06"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:15:50"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:15:57"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:16:00"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:19:15"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:19:20"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:19:22"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 23:26:11"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:26:13"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:26:15"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:26:16"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 23:29:01"}

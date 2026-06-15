@@ -40,7 +40,7 @@ function initBot() {
     return null;
   }
   const bot = new Telegraf(token);
-  const MINI_APP_URL = process.env.MINI_APP_URL || 'http://localhost:5173';
+  const MINI_APP_URL = (process.env.MINI_APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
 
   // Returns a real button if MINI_APP_URL is usable by Telegram, otherwise
   // null so the caller can fall back to plain text instead of crashing.
@@ -105,7 +105,7 @@ function initBot() {
       + `ℹ️ /help – help info`;
 
     const appButton = miniAppButton('🎨 Open Presentation Editor', MINI_APP_URL);
-    if (!appButton) welcome += `\n\n🔗 Mini App: ${MINI_APP_URL}`;
+    welcome += `\n\n🔗 Mini App: ${MINI_APP_URL}`;
 
     await ctx.reply(welcome, {
       parse_mode: 'Markdown',
@@ -191,8 +191,8 @@ function initBot() {
           + `• Audience: ${pres.audience}\n`
           + `• Style: ${pres.style}\n`
           + `• Slides: ${pres.slideCount}\n`
-          + `• Created: ${pres.createdAt.toLocaleDateString()}`;
-        if (!editButton) text += `\n\n🔗 Editor: ${editUrl}`;
+          + `• Created: ${pres.createdAt.toLocaleDateString()}`
+          + `\n\n🔗 Editor: ${editUrl}`;
 
         await ctx.reply(text, {
           parse_mode: 'Markdown',
@@ -236,8 +236,8 @@ function initBot() {
         const editUrl = `${MINI_APP_URL}/?tgId=${tgId}&title=${encodeURIComponent(title)}&audience=${encodeURIComponent(audience)}&action=new`;
         const openButton = miniAppButton('🎨 Open Presentation Editor', editUrl);
 
-        let confirm = `🎉 *Presentation Configured!* 🎉\n\n• Title: ${title}\n• Audience: ${audience}\n\nClick below to open the Mini App and let AI build the slides.`;
-        if (!openButton) confirm += `\n\n🔗 ${editUrl}`;
+        let confirm = `🎉 *Presentation Configured!* 🎉\n\n• Title: ${title}\n• Audience: ${audience}\n\nClick below to open the Mini App and let AI build the slides.`
+          + `\n\n🔗 ${editUrl}`;
 
         await ctx.reply(confirm, { parse_mode: 'Markdown', ...buildKeyboard([[openButton]]) });
         clearSession(tgId);
