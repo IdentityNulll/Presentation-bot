@@ -1,0 +1,19 @@
+{
+  "name": "slidepaw",
+  "version": "1.0.0",
+  "description": "SlidePaw - Presentation Generation Bot, Admin Dashboard & Telegram Mini App",
+  "scripts": {
+    "install:all": "npm install && npm run install:backend && npm run install:admin && npm run install:miniapp",
+    "install:backend": "cd backend && npm install",
+    "install:admin": "cd admin && npm install",
+    "install:miniapp": "cd miniapp && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:admin": "cd admin && npm run dev",
+    "dev:miniapp": "cd miniapp && npm run dev",
+    "build:admin": "cd admin && npm run build",
+    "build:miniapp": "cd miniapp && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
