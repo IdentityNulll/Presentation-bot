@@ -219,3 +219,24 @@
 {"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 17:40:40"}
 {"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 17:40:44"}
 {"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 17:40:47"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 22:28:03"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 22:28:05"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 22:28:07"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 22:28:09"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 1.593 ms - 51\u001b[0m","timestamp":"2026-06-15 22:38:27"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.487 ms - 51\u001b[0m","timestamp":"2026-06-15 22:42:26"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.246 ms - 51\u001b[0m","timestamp":"2026-06-15 22:42:27"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.238 ms - 51\u001b[0m","timestamp":"2026-06-15 22:42:27"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.686 ms - 51\u001b[0m","timestamp":"2026-06-15 22:42:27"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.515 ms - 51\u001b[0m","timestamp":"2026-06-15 22:42:27"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.242 ms - 51\u001b[0m","timestamp":"2026-06-15 22:42:28"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 22:45:27"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 22:45:29"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 22:45:32"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 22:45:33"}
+{"level":"info","message":"\u001b[0mGET /api/miniapp/presentations \u001b[33m401\u001b[0m 3.167 ms - 51\u001b[0m","timestamp":"2026-06-15 22:46:06"}
+{"level":"info","message":"\u001b[0mGET /api/miniapp/presentations \u001b[33m401\u001b[0m 0.874 ms - 51\u001b[0m","timestamp":"2026-06-15 22:46:06"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.539 ms - 51\u001b[0m","timestamp":"2026-06-15 22:46:15"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.780 ms - 51\u001b[0m","timestamp":"2026-06-15 22:46:16"}
+{"level":"info","message":"\u001b[0mPOST /api/miniapp/presentations/generate \u001b[33m401\u001b[0m 0.674 ms - 51\u001b[0m","timestamp":"2026-06-15 22:46:16"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 22:48:00"}

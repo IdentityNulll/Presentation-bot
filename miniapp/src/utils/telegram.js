@@ -6,16 +6,20 @@
 export function initTelegramApp() {
   if (window.Telegram?.WebApp) {
     const app = window.Telegram.WebApp;
-    // Sync theme colors to CSS variables
-    document.documentElement.style.setProperty('--tg-theme-bg-color', app.backgroundColor || '#020617');
-    document.documentElement.style.setProperty('--tg-theme-text-color', app.textColor || '#f8fafc');
-    // Ensure safe area padding (iOS notch)
+  // Sync theme colors to CSS variables (fallbacks for older versions)
+  document.documentElement.style.setProperty('--tg-theme-bg-color', app.backgroundColor || '#020617');
+  document.documentElement.style.setProperty('--tg-theme-text-color', app.textColor || '#f8fafc');
+  // Safe area handling – some versions lack safeArea
+  if (app.safeArea && typeof app.safeArea.bottom === 'number') {
     const safeBottom = app.viewportHeight - app.safeArea.bottom;
     document.documentElement.style.setProperty('--tg-safe-bottom', `${app.safeArea.bottom}px`);
-    // Close handler – navigate back to home if needed
+  }
+  // Close handler – safely attach if supported
+  if (typeof app.onEvent === 'function') {
     app.onEvent('close', () => {
       // No-op, but you can notify backend if needed.
     });
+  }
   }
 }
 
@@ -44,9 +48,11 @@ export function getStartParams() {
 export function hapticFeedback(type = 'impact', style = 'light') {
   if (window.Telegram?.WebApp) {
     const app = window.Telegram.WebApp;
-    if (type === 'impact') app.HapticFeedback.impact(style);
-    if (type === 'notification') app.HapticFeedback.notification(style);
-    if (type === 'selection') app.HapticFeedback.selection();
+    const hf = app.HapticFeedback;
+    if (!hf) return;
+    if (type === 'impact' && typeof hf.impact === 'function') hf.impact(style);
+    else if (type === 'notification' && typeof hf.notification === 'function') hf.notification(style);
+    else if (type === 'selection' && typeof hf.selection === 'function') hf.selection();
   }
 }
 
@@ -54,12 +60,16 @@ export function hapticFeedback(type = 'impact', style = 'light') {
 export function showBackButton(callback) {
   if (window.Telegram?.WebApp) {
     const app = window.Telegram.WebApp;
-    app.BackButton.show();
-    app.BackButton.onClick(callback);
-    return () => {
-      app.BackButton.hide();
-      app.BackButton.offClick(callback);
-    };
+    // BackButton introduced in later versions – guard its presence
+    if (app.BackButton && typeof app.BackButton.show === 'function') {
+      app.BackButton.show();
+      app.BackButton.onClick(callback);
+      return () => {
+        app.BackButton.hide();
+        app.BackButton.offClick(callback);
+      };
+    }
   }
+  // Fallback – no back button support
   return () => {};
 }

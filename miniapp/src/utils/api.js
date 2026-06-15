@@ -1,13 +1,31 @@
 import axios from 'axios';
+import { getTelegramUser } from './telegram';
 
 // Base URL for backend – can be overridden via environment variable
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/miniapp';
+
+// Create axios instance with base URL and default headers
+const axiosInstance = axios.create({
+  baseURL: BASE_URL,
+});
+
+// Attach Telegram user info headers if available
+axiosInstance.interceptors.request.use((config) => {
+  const user = getTelegramUser();
+  if (user && user.id) {
+    config.headers['X-Telegram-Id'] = user.id;
+    if (user.username) config.headers['X-Telegram-Username'] = user.username;
+    if (user.first_name) config.headers['X-Telegram-First-Name'] = user.first_name;
+    if (user.last_name) config.headers['X-Telegram-Last-Name'] = user.last_name;
+  }
+  return config;
+});
 
 /**
  * Generic GET wrapper with error handling
  */
 async function get(path) {
-  const res = await axios.get(`${BASE_URL}${path}`);
+  const res = await axiosInstance.get(`${path}`);
   return res.data;
 }
 
@@ -15,7 +33,7 @@ async function get(path) {
  * Generic POST wrapper
  */
 async function post(path, payload) {
-  const res = await axios.post(`${BASE_URL}${path}`, payload);
+  const res = await axiosInstance.post(`${path}`, payload);
   return res.data;
 }
 
@@ -23,7 +41,7 @@ async function post(path, payload) {
  * Generic PATCH wrapper for updates
  */
 async function patch(path, payload) {
-  const res = await axios.patch(`${BASE_URL}${path}`, payload);
+  const res = await axiosInstance.patch(`${path}`, payload);
   return res.data;
 }
 
