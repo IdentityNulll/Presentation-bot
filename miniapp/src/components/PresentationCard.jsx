@@ -15,6 +15,8 @@ export default function PresentationCard({ presentation, onClick }) {
     ? `#${presentation.theme.accent}`
     : '#6366f1';
 
+  const isApproved = presentation.paymentStatus === 'APPROVED';
+
   return (
     <button
       onClick={onClick}
@@ -46,6 +48,9 @@ export default function PresentationCard({ presentation, onClick }) {
           <span className="flex items-center gap-1 text-[11px] text-slate-500">
             <Calendar className="w-3 h-3" />
             {date}
+          </span>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isApproved ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
+            {isApproved ? 'Unlocked ✅' : 'Locked 🔒'}
           </span>
         </div>
       </div>

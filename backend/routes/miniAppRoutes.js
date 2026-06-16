@@ -13,8 +13,10 @@ const userAuthMiddleware = require('../middleware/userAuthMiddleware');
 router.use(userAuthMiddleware);
 
 // Core endpoints
+router.get('/me', (req, res) => res.json(req.user));
 router.get('/templates', miniAppController.getTemplates);
 router.post('/presentations/generate', miniAppController.generatePresentation);
+router.post('/presentations/:id/select-style', miniAppController.selectStyle);
 router.get('/presentations', miniAppController.getPresentations);
 router.get('/presentations/:id', miniAppController.getPresentationDetails);
 router.put('/presentations/:id', miniAppController.updatePresentation);

@@ -144,7 +144,7 @@ const AUDIENCE_TEMPLATES = {
  * Expands a topic locally based on inputs.
  * Returns { title, topic, style, audience, slides: [{ title, content, speakerNotes, imagePrompt }] }
  */
-function generateLocalPresentation(topic, title, audience, style, slideCount = 6) {
+function generateLocalPresentation(topic, title, audience, style, slideCount = 9) {
   // Normalize parameters
   let resolvedAudience = AUDIENCES.GENERAL;
   if (audience) {
@@ -156,19 +156,6 @@ function generateLocalPresentation(topic, title, audience, style, slideCount = 6
   const presentationTitle = title || `A Deep Dive into ${topic}`;
   
   const generatedSlides = [];
-  const slideTypes = [
-    'Cover',
-    'TwoColumn',
-    'ImageLeft',
-    'ImageRight',
-    'FullImage',
-    'Quote',
-    'Statistics',
-    'Timeline',
-    'Comparison',
-    'Team',
-    'Conclusion'
-  ];
 
   for (let i = 0; i < slideCount; i++) {
     let slideTitle = "";
@@ -193,54 +180,81 @@ function generateLocalPresentation(topic, title, audience, style, slideCount = 6
       slideTitle = "Agenda & Overview";
       contentList = [
         "Phase 1: Project Background & Context",
-        "Phase 2: Key Challenges & Analysis",
-        "Phase 3: Solutions & Roadmap",
-        "Phase 4: Key Performance Statistics",
-        "Phase 5: Next Steps & Q&A"
+        "Phase 2: Core Analysis & Technical Details",
+        "Phase 3: The Three Proposed Action Plans",
+        "Phase 4: Frequently Asked Questions (Q&A)",
+        "Phase 5: Key Metrics, Statistics & Conclusions"
       ];
       description = "Agenda timeline showing the flow of this deck";
       note = "Walk through the agenda slide to set expectations for the presentation.";
-    } else if (i === slideCount - 1) {
-      slideType = 'Conclusion';
-      slideTitle = "Summary & Thank You";
+    } else if (i === 2) {
+      slideType = 'TwoColumn';
+      slideTitle = `Core Concepts of ${topic}`;
       contentList = [
-        "Key takeaways summarized",
-        "Final reflections and next steps",
-        "Thank you - Open Q&A session"
+        `Fundamental definition and origin of ${topic}`,
+        "Why this domain is rapidly expanding and evolving",
+        "Key drivers of success and implementation principles"
       ];
-      description = "Closing remarks and session wrap-up";
-      note = "Summarize the key points discussed today. Express gratitude and invite open questions from the audience.";
+      description = "Core introduction and definition";
+      note = "Briefly introduce the core definitions of the topic.";
+    } else if (i === 3) {
+      slideType = 'ImageLeft';
+      slideTitle = `Strategic Analysis of ${topic}`;
+      contentList = [
+        "Key market pain points we need to address",
+        "Technological and operational constraints",
+        "Opportunities for innovation and strategic advantage"
+      ];
+      description = "Context and environment analysis";
+      note = "Explain the environmental parameters and challenges.";
+    } else if (i === 4) {
+      // 3 Plans slide
+      slideType = 'Comparison';
+      slideTitle = "Implementation: Three Proposed Plans";
+      contentList = [
+        "Plan A (Basic): Starter package focusing on core features and minimal deployment cost",
+        "Plan B (Standard): Balanced package featuring full automation, analytics, and moderate scale",
+        "Plan C (Premium): Advanced custom package with dedicated support, AI optimization, and max scale"
+      ];
+      description = "Comparison of Basic, Standard, and Premium action plans";
+      note = "Analyze the three strategic options: Plan A (Basic), Plan B (Standard), and Plan C (Premium). Highlight budget vs features.";
+    } else if (i === 5) {
+      // Q&A slide
+      slideType = 'TwoColumn';
+      slideTitle = "Frequently Asked Q&A";
+      contentList = [
+        `Q: What is the main challenge of ${topic}? A: Initial setup complexity and data integration.`,
+        "Q: How long does implementation take? A: 2 to 6 weeks depending on the selected plan.",
+        "Q: What is the expected ROI? A: Usually visible within the first 3 months of deployment."
+      ];
+      description = "Key questions and corresponding answers";
+      note = "Address the most common concerns and clarify the technical implementation details.";
+    } else if (i === 6) {
+      slideType = 'Statistics';
+      slideTitle = "Key Performance Metrics";
+      contentList = [
+        "85% Efficiency Growth in operations",
+        "40% reduction in total overhead cost",
+        "Over 10,000 active daily user engagements"
+      ];
+      description = "Breakdown of performance statistics";
+      note = "Detail the growth and cost reduction figures.";
+    } else if (i === 7) {
+      slideType = 'Quote';
+      slideTitle = "Industry Perspective";
+      contentList = ["\"Innovation is taking two things that already exist and putting them together in a new way.\" - Tom Freston"];
+      description = "Key citation emphasizing strategic vision";
+      note = "Share an inspiring quote to summarize the presentation's vision.";
     } else {
-      // Body slides
-      const templateIdx = (i - 1) % (template.slideTitles.length - 2) + 1;
-      
-      const rawTitle = template.slideTitles[templateIdx] || "Topic Detail";
-      slideTitle = rawTitle.replace('{topic}', topic);
-      
-      const rawContents = template.slideContents[templateIdx] || ["Key detail about " + topic];
-      contentList = rawContents.map(c => c.replace('{topic}', topic));
-      
-      note = template.notes[templateIdx] || `Explain this slide's core message. Support the slide points with descriptive explanations.`;
-      
-      // Rotate types for body slides
-      const bodyTypes = ['ImageLeft', 'ImageRight', 'Statistics', 'Comparison', 'Quote'];
-      slideType = bodyTypes[(i - 2) % bodyTypes.length];
-      
-      if (slideType === 'Statistics') {
-        slideTitle = "Key Metrics & Statistics";
-        contentList = [
-          "85% Efficiency Growth",
-          "40% reduction in total operational cost",
-          "Over 10,000 active daily engagements"
-        ];
-        description = "Breakdown of performance statistics";
-      } else if (slideType === 'Quote') {
-        slideTitle = "Industry Perspective";
-        contentList = ["\"Innovation is taking two things that already exist and putting them together in a new way.\" - Tom Freston"];
-        description = "Key citation emphasizing strategic vision";
-      } else {
-        description = `Core analytical analysis of ${topic}`;
-      }
+      slideType = 'Conclusion';
+      slideTitle = "Summary & Next Steps";
+      contentList = [
+        "Select the appropriate action plan (Plan A, B, or C)",
+        "Schedule kickoff meeting with stakeholders",
+        "Submit payment and start setup process"
+      ];
+      description = "Closing remarks and next steps";
+      note = "Summarize the key points discussed today. Invite the audience to select a plan and get started.";
     }
 
     const imagePrompt = `Professional slide graphic, flat illustration, modern style, depicting '${slideTitle}' related to '${topic}'. Clean vectors, suitable for ${style || 'Professional'} style presentation, neutral background.`;

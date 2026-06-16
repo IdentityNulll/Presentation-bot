@@ -37,6 +37,11 @@ const UserSchema = new mongoose.Schema({
     type: String, // Used only if the user has dashboard password access (admins)
     default: null
   },
+  language: {
+    type: String,
+    enum: ['en', 'ru', 'uz'],
+    default: 'en'
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -2,7 +2,7 @@ const PptxGenJS = require('pptxgenjs');
 const PDFDocument = require('pdfkit');
 const { getTheme } = require('../shared/themes');
 const logger = require('../utils/logger');
-const { prisma } = require('./dbService');
+const { Export } = require('./dbService');
 
 /**
  * Generates a PPTX presentation buffer.
@@ -333,17 +333,12 @@ function generateMarkdown(presentation, slides) {
   return Buffer.from(md, 'utf-8');
 }
 
-/**
- * Log export count.
- */
 async function logExport(userId, presentationId, format) {
   try {
-    await prisma.exportLog.create({
-      data: {
-        userId,
-        presentationId,
-        format
-      }
+    await Export.create({
+      userId,
+      presentationId,
+      format
     });
   } catch (error) {
     logger.error('Failed to log export to DB: %O', error);

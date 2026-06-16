@@ -43,14 +43,21 @@ async function generatePresentationStructure(topic, title, audience, style, slid
   }
 
   const prompt = `
-Generate a professional presentation structure in the ${language} language.
+Generate a professional presentation structure in the "${language}" language. All titles, content bullets, speaker notes, descriptions, and suggested visuals MUST be generated in the "${language}" language (ru for Russian, en for English, uz for Uzbek).
+
 Topic: "${topic}"
 Target Presentation Title: "${title || `Overview of ${topic}`}"
 Audience: ${audience}
 Style/Theme: ${style}
 Number of Slides: ${slideCount}
 
-For each slide, you must choose the most appropriate layout type from this list of Slide Types:
+You MUST follow these specific slide structure rules:
+1. First slide (order 0) MUST be layout type 'Cover'.
+2. The deck MUST contain at least one Comparison/Table slide (layout type 'Comparison' or 'TwoColumn') that professionally divides the presentation/topic into 3 distinct plans (e.g. Starter/Standard/Premium or Plan A/Plan B/Plan C), outlining features and options.
+3. The deck MUST contain at least one Q&A slide (layout type 'TwoColumn') featuring key questions about the topic and their corresponding answers.
+4. The rest of the slides should be general content slides explaining the topic with professional depth.
+
+For each slide, choose the most appropriate layout type from this list:
 - 'Cover' (Used ONLY for the first slide)
 - 'TwoColumn' (Two columns of bullet points)
 - 'ImageLeft' (Image on left side, text/bullets on right)
@@ -64,13 +71,13 @@ For each slide, you must choose the most appropriate layout type from this list 
 - 'Conclusion' (A summary wrap-up, thank you, or call-to-action)
 
 Each slide in the response must contain:
-1. "type": One of the exact slide type string names listed above (e.g. "Cover", "TwoColumn", "ImageLeft", "Statistics").
-2. "title": A concise slide title specific to the content.
-3. "description": A 1-sentence description of the slide.
-4. "content": The slide body text (3-4 bullet points separated by newlines \\n).
-5. "speakerNotes": 2-3 sentences guiding the speaker.
-6. "imagePrompt": A detailed descriptive prompt for DALL-E/Unsplash/Pexels to search or generate a relevant background or contextual image.
-7. "suggestedVisuals": Specific keyword or type description for icons/charts/illustrations to display on the slide (e.g. "bar chart representing growth metrics", "icon of security shield").
+1. "type": One of the exact slide type string names listed above.
+2. "title": A concise slide title specific to the content in the "${language}" language.
+3. "description": A 1-sentence description of the slide in the "${language}" language.
+4. "content": The slide body text (3-4 bullet points separated by newlines \\n) in the "${language}" language.
+5. "speakerNotes": 2-3 sentences guiding the speaker in the "${language}" language.
+6. "imagePrompt": A detailed descriptive prompt for DALL-E/Unsplash/Pexels to search or generate a relevant background or contextual image. Can be in English for search compatibility.
+7. "suggestedVisuals": Specific keyword or type description for icons/charts/illustrations in the "${language}" language.
 
 Your output MUST be valid JSON, conforming to this exact structure:
 {

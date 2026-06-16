@@ -46,7 +46,28 @@ async function patch(path, payload) {
   return res.data;
 }
 
+/**
+ * Generic PUT wrapper
+ */
+async function put(path, payload) {
+  const res = await axiosInstance.put(`${path}`, payload);
+  return res.data;
+}
+
+/**
+ * Generic DELETE wrapper
+ */
+async function del(path) {
+  const res = await axiosInstance.delete(`${path}`);
+  return res.data;
+}
+
 export default {
+  /** Get current user details from DB */
+  async getUserInfo() {
+    return await get("/me");
+  },
+
   /** Fetch user's presentations */
   async getPresentations() {
     return await get("/presentations");
@@ -64,11 +85,63 @@ export default {
 
   /** Update a presentation */
   async updatePresentation(id, data) {
-    return await patch(`/presentations/${id}`, data);
+    return await put(`/presentations/${id}`, data);
   },
 
   /** Generate presentation via AI (used by wizard) */
   async generatePresentation(payload) {
     return await post("/presentations/generate", payload);
+  },
+
+  /** Add a slide */
+  async addSlide(id) {
+    return await post(`/presentations/${id}/slides`);
+  },
+
+  /** Update a slide */
+  async updateSlide(id, slideId, data) {
+    return await put(`/presentations/${id}/slides/${slideId}`, data);
+  },
+
+  /** Delete a slide */
+  async deleteSlide(id, slideId) {
+    return await del(`/presentations/${id}/slides/${slideId}`);
+  },
+
+  /** Duplicate a slide */
+  async duplicateSlide(id, slideId) {
+    return await post(`/presentations/${id}/slides/${slideId}/duplicate`);
+  },
+
+  /** Reorder slides */
+  async reorderSlides(id, slideIds) {
+    return await post(`/presentations/${id}/slides/reorder`, { slideIds });
+  },
+
+  /** Regenerate a slide using AI */
+  async regenerateSlide(id, slideId) {
+    return await post(`/presentations/${id}/slides/${slideId}/regenerate`);
+  },
+
+  /** Search/suggest stock images */
+  async suggestImages(query) {
+    return await get(`/images/suggest?query=${encodeURIComponent(query)}`);
+  },
+
+  /** Upload an image */
+  async uploadImage(id, file) {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await axiosInstance.post(`/presentations/${id}/upload`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  },
+
+  /** Confirm style selection and request payment link via bot */
+  async selectStyle(id, style) {
+    return await post(`/presentations/${id}/select-style`, { style });
   },
 };

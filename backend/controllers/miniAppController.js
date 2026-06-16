@@ -59,9 +59,11 @@ async function generatePresentation(req, res, next) {
   const { title, audience, style, topic } = req.body;
   const userId = req.user._id;
 
-  if (!title || !audience || !style || !topic) {
-    return res.status(400).json({ error: 'title, audience, style, and topic are required.' });
+  if (!title || !audience || !topic) {
+    return res.status(400).json({ error: 'title, audience, and topic are required.' });
   }
+
+  const resolvedStyle = style || 'professional';
 
   try {
     // Check limits for FREE users
@@ -72,11 +74,12 @@ async function generatePresentation(req, res, next) {
       }
     }
 
-    // Call AI service
-    const generated = await generatePresentationStructure(topic, title, audience, style, 6, 'en', userId);
+    // Call AI service with user language preference and 9 slides
+    const userLanguage = req.user.language || 'en';
+    const generated = await generatePresentationStructure(topic, title, audience, resolvedStyle, 9, userLanguage, userId);
 
     // Save Presentation
-    const themeConfig = THEMES[style.toLowerCase()] || THEMES.professional;
+    const themeConfig = THEMES[resolvedStyle.toLowerCase()] || THEMES.professional;
     const presentation = await Presentation.create({
       title: generated.title,
       topic: generated.topic,
@@ -84,8 +87,9 @@ async function generatePresentation(req, res, next) {
       audience: generated.audience,
       slideCount: generated.slides.length,
       userId,
+      paymentStatus: 'PENDING_PAYMENT',
       theme: {
-        name: style,
+        name: resolvedStyle,
         bg: themeConfig.bg,
         text: themeConfig.text,
         accent: themeConfig.accent,
@@ -161,6 +165,11 @@ async function updatePresentation(req, res, next) {
     const pres = await Presentation.findById(id);
     if (!pres) return res.status(404).json({ error: 'Presentation not found.' });
 
+    // Enforce lock checks
+    if (pres.paymentStatus !== 'APPROVED') {
+      return res.status(403).json({ error: 'LOCK_ERROR', message: '🔒 This presentation is locked. Please complete the payment first.' });
+    }
+
     if (title) pres.title = title;
     if (style) pres.style = style;
     if (theme) pres.theme = { ...pres.theme, ...theme };
@@ -178,6 +187,14 @@ async function updatePresentation(req, res, next) {
 async function addSlide(req, res, next) {
   const { id } = req.params;
   try {
+    const pres = await Presentation.findById(id);
+    if (!pres) return res.status(404).json({ error: 'Presentation not found.' });
+
+    // Enforce lock checks
+    if (pres.paymentStatus !== 'APPROVED') {
+      return res.status(403).json({ error: 'LOCK_ERROR', message: '🔒 This presentation is locked. Please complete the payment first.' });
+    }
+
     const slideCount = await Slide.countDocuments({ presentationId: id });
     const slide = await Slide.create({
       presentationId: id,
@@ -206,6 +223,11 @@ async function updateSlide(req, res, next) {
     const slide = await Slide.findById(slideId);
     if (!slide) return res.status(404).json({ error: 'Slide not found.' });
 
+    const pres = await Presentation.findById(slide.presentationId);
+    if (pres && pres.paymentStatus !== 'APPROVED') {
+      return res.status(403).json({ error: 'LOCK_ERROR', message: '🔒 This presentation is locked. Please complete the payment first.' });
+    }
+
     if (title !== undefined) slide.title = title;
     if (type !== undefined) slide.type = type;
     if (description !== undefined) slide.description = description;
@@ -228,6 +250,11 @@ async function updateSlide(req, res, next) {
 async function deleteSlide(req, res, next) {
   const { id, slideId } = req.params;
   try {
+    const pres = await Presentation.findById(id);
+    if (pres && pres.paymentStatus !== 'APPROVED') {
+      return res.status(403).json({ error: 'LOCK_ERROR', message: '🔒 This presentation is locked. Please complete the payment first.' });
+    }
+
     const slideToDelete = await Slide.findById(slideId);
     if (!slideToDelete) return res.status(404).json({ error: 'Slide not found.' });
 
@@ -253,6 +280,11 @@ async function deleteSlide(req, res, next) {
 async function duplicateSlide(req, res, next) {
   const { id, slideId } = req.params;
   try {
+    const pres = await Presentation.findById(id);
+    if (pres && pres.paymentStatus !== 'APPROVED') {
+      return res.status(403).json({ error: 'LOCK_ERROR', message: '🔒 This presentation is locked. Please complete the payment first.' });
+    }
+
     const slideToDup = await Slide.findById(slideId);
     if (!slideToDup) return res.status(404).json({ error: 'Slide not found.' });
 
@@ -297,6 +329,11 @@ async function reorderSlides(req, res, next) {
   }
 
   try {
+    const pres = await Presentation.findById(id);
+    if (pres && pres.paymentStatus !== 'APPROVED') {
+      return res.status(403).json({ error: 'LOCK_ERROR', message: '🔒 This presentation is locked. Please complete the payment first.' });
+    }
+
     const bulkOps = slideIds.map((slideId, index) => ({
       updateOne: {
         filter: { _id: slideId, presentationId: id },
@@ -320,6 +357,10 @@ async function regenerateSlide(req, res, next) {
   try {
     const pres = await Presentation.findById(id);
     if (!pres) return res.status(404).json({ error: 'Presentation not found.' });
+
+    if (pres.paymentStatus !== 'APPROVED') {
+      return res.status(403).json({ error: 'LOCK_ERROR', message: '🔒 This presentation is locked. Please complete the payment first.' });
+    }
 
     const slide = await Slide.findById(slideId);
     if (!slide) return res.status(404).json({ error: 'Slide not found.' });
@@ -496,6 +537,11 @@ async function exportPresentation(req, res, next) {
     const pres = await Presentation.findById(id);
     if (!pres) return res.status(404).json({ error: 'Presentation not found.' });
 
+    // Enforce lock checks
+    if (pres.paymentStatus !== 'APPROVED') {
+      return res.status(403).json({ error: 'LOCK_ERROR', message: '🔒 This presentation is locked. Please complete the payment first.' });
+    }
+
     const slides = await Slide.find({ presentationId: id }).sort({ order: 1 });
     if (slides.length === 0) {
       return res.status(400).json({ error: 'Presentation has no slides to export.' });
@@ -534,6 +580,54 @@ async function exportPresentation(req, res, next) {
   }
 }
 
+/**
+ * Handles style confirmation and initiates Telegram payment request
+ */
+async function selectStyle(req, res, next) {
+  const { id } = req.params;
+  const { style } = req.body;
+
+  if (!style) {
+    return res.status(400).json({ error: 'style is required.' });
+  }
+
+  try {
+    const pres = await Presentation.findById(id);
+    if (!pres) return res.status(404).json({ error: 'Presentation not found.' });
+
+    pres.style = style;
+    const themeConfig = THEMES[style.toLowerCase()] || THEMES.professional;
+    pres.theme = {
+      name: style,
+      bg: themeConfig.bg,
+      text: themeConfig.text,
+      accent: themeConfig.accent,
+      fontTitle: themeConfig.fontTitle,
+      fontBody: themeConfig.fontBody
+    };
+    pres.paymentStatus = 'PENDING_PAYMENT';
+    await pres.save();
+
+    // Trigger bot message
+    try {
+      const { getBotInstance } = require('../services/botService');
+      const bot = getBotInstance();
+      if (bot) {
+        const i18n = require('../utils/i18n');
+        const userLanguage = req.user.language || 'en';
+        const paymentMsg = i18n.getTranslation(userLanguage, 'payment_request');
+        await bot.telegram.sendMessage(req.user.telegramId, paymentMsg, { parse_mode: 'Markdown' });
+      }
+    } catch (botErr) {
+      logger.error('Failed to send bot payment message: %O', botErr);
+    }
+
+    return res.json({ message: 'Style selected and payment request sent.', presentation: pres });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getTemplates,
   generatePresentation,
@@ -548,5 +642,6 @@ module.exports = {
   regenerateSlide,
   suggestImages,
   uploadImage,
-  exportPresentation
+  exportPresentation,
+  selectStyle
 };
