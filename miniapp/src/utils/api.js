@@ -1,22 +1,23 @@
-import axios from 'axios';
-import { getTelegramUser } from './telegram';
+import axios from "axios";
+import { getTelegramUser } from "./telegram";
 
 // Base URL for backend – can be overridden via environment variable
-const BASE_URL = import.meta.env.VITE_API_URL || '/api/miniapp';
+const BASE_URL = import.meta.env.VITE_API_URL || "/api/miniapp";
 
 // Create axios instance with base URL and default headers
 const axiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: `${BASE_URL}/api/miniapp`,
 });
 
 // Attach Telegram user info headers if available
 axiosInstance.interceptors.request.use((config) => {
   const user = getTelegramUser();
   if (user && user.id) {
-    config.headers['X-Telegram-Id'] = user.id;
-    if (user.username) config.headers['X-Telegram-Username'] = user.username;
-    if (user.first_name) config.headers['X-Telegram-First-Name'] = user.first_name;
-    if (user.last_name) config.headers['X-Telegram-Last-Name'] = user.last_name;
+    config.headers["X-Telegram-Id"] = user.id;
+    if (user.username) config.headers["X-Telegram-Username"] = user.username;
+    if (user.first_name)
+      config.headers["X-Telegram-First-Name"] = user.first_name;
+    if (user.last_name) config.headers["X-Telegram-Last-Name"] = user.last_name;
   }
   return config;
 });
@@ -48,7 +49,7 @@ async function patch(path, payload) {
 export default {
   /** Fetch user's presentations */
   async getPresentations() {
-    return await get('/presentations');
+    return await get("/presentations");
   },
 
   /** Fetch a single presentation by id */
@@ -58,7 +59,7 @@ export default {
 
   /** Create a new presentation */
   async createPresentation(data) {
-    return await post('/presentations', data);
+    return await post("/presentations", data);
   },
 
   /** Update a presentation */
@@ -68,6 +69,6 @@ export default {
 
   /** Generate presentation via AI (used by wizard) */
   async generatePresentation(payload) {
-    return await post('/presentations/generate', payload);
+    return await post("/presentations/generate", payload);
   },
 };
