@@ -6,7 +6,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || "/api/miniapp";
 
 // Create axios instance with base URL and default headers
 const axiosInstance = axios.create({
-  baseURL: `${BASE_URL}/api/miniapp`,
+  baseURL: `https://presentation-bot-production-a425.up.railway.app/api/miniapp/`,
 });
 
 // Attach Telegram user info headers if available

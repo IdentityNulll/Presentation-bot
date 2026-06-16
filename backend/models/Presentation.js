@@ -11,7 +11,7 @@ const PresentationSchema = new mongoose.Schema({
   },
   style: {
     type: String,
-    enum: ['Modern', 'Professional', 'Academic', 'Startup Pitch', 'Minimalist', 'Dark Theme', 'Creative', 'Corporate'],
+    enum: ['modern', 'professional', 'academic', 'startup Pitch', 'minimalist', 'dark Theme', 'creative', 'corporate'],
     default: 'Professional'
   },
   audience: {
