@@ -1,7 +1,7 @@
 const { Presentation, Slide, User, Template, Export, Setting, logSystemEvent } = require('../services/dbService');
 const { generatePresentationStructure, regenerateSingleSlide } = require('../services/aiService');
 const { generatePPTX, generatePDF } = require('../services/exportService');
-const { THEMES } = require('../../shared/themes');
+const { THEMES } = require('../shared/themes');
 const logger = require('../utils/logger');
 const cloudinary = require('cloudinary').v2;
 
