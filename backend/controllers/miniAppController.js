@@ -116,6 +116,74 @@ async function generatePresentation(req, res, next) {
 
     await logSystemEvent('ai_generation', { topic, title, presentationId: presentation._id }, userId);
 
+    // Notify user via Telegram Bot with inline buttons
+    try {
+      const { getBotInstance } = require('../services/botService');
+      const bot = getBotInstance();
+      if (bot) {
+        const { Markup } = require('telegraf');
+        const i18n = require('../utils/i18n');
+        const MINI_APP_URL = (process.env.MINI_APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
+        
+        // Build editor URL
+        const editUrl = `${MINI_APP_URL}/?tgId=${req.user.telegramId}&presId=${presentation._id}&action=edit`;
+        
+        const isPubliclyAccessible = (url) => {
+          try {
+            const { protocol, hostname } = new URL(url);
+            if (protocol !== 'http:' && protocol !== 'https:') return false;
+            if (['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(hostname)) return false;
+            if (hostname.endsWith('.local')) return false;
+            if (/^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return false;
+            return true;
+          } catch {
+            return false;
+          }
+        };
+
+        let editButton = null;
+        if (isPubliclyAccessible(editUrl)) {
+          if (editUrl.startsWith('https://')) {
+            editButton = Markup.button.webApp(i18n.getTranslation(userLanguage, 'btn_open_editor'), editUrl);
+          } else {
+            editButton = Markup.button.url(i18n.getTranslation(userLanguage, 'btn_open_editor'), editUrl);
+          }
+        }
+
+        const lockStatus = presentation.paymentStatus === 'APPROVED' ? '✅ Unlocked' : '🔒 Locked (Awaiting Payment)';
+        const text = `🎉 *Presentation Created successfully!* 🎉\n\n`
+          + `📊 *${presentation.title}* (9 slides)\n`
+          + `• Audience: ${presentation.audience}\n`
+          + `• Style: ${presentation.style}\n`
+          + `• Status: ${lockStatus}\n\n`
+          + `🔗 Editor: ${editUrl}`;
+
+        const buttonRows = [];
+        if (editButton) {
+          buttonRows.push([editButton]);
+        }
+        
+        buttonRows.push([
+          Markup.button.callback(i18n.getTranslation(userLanguage, 'btn_download_pptx'), `dl_pptx_${presentation._id}`),
+          Markup.button.callback(i18n.getTranslation(userLanguage, 'btn_download_pdf'), `dl_pdf_${presentation._id}`)
+        ]);
+
+        const buildKeyboard = (rows) => {
+          const filtered = rows
+            .map(row => row.filter(Boolean))
+            .filter(row => row.length > 0);
+          return filtered.length ? Markup.inlineKeyboard(filtered) : {};
+        };
+
+        await bot.telegram.sendMessage(req.user.telegramId, text, {
+          parse_mode: 'Markdown',
+          ...buildKeyboard(buttonRows)
+        });
+      }
+    } catch (botErr) {
+      logger.error('Failed to send bot notification for generated presentation: %O', botErr);
+    }
+
     return res.status(201).json({
       presentation,
       slides
