@@ -1,6 +1,6 @@
 const PptxGenJS = require('pptxgenjs');
 const PDFDocument = require('pdfkit');
-const { getTheme } = require('../../shared/themes');
+const { getTheme } = require('../shared/themes');
 const logger = require('../utils/logger');
 const { prisma } = require('./dbService');
 

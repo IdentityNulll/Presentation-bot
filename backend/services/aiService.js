@@ -1,6 +1,6 @@
 const axios = require('axios');
 const { Setting, logSystemEvent } = require('./dbService');
-const { generateLocalPresentation } = require('../../shared/presentationTemplates');
+const { generateLocalPresentation } = require('../shared/presentationTemplates');
 const logger = require('../utils/logger');
 
 /**
