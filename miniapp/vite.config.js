@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://presentation-bot-production-a425.up.railway.app/',
+        target: 'https://presentation-bot-production-a425.up.railway.app/api/miniapp',
         changeOrigin: true,
       }
     }
