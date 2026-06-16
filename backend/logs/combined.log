@@ -283,3 +283,7 @@
 {"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:26:15"}
 {"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:26:16"}
 {"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 23:29:01"}
+{"level":"info","message":"Backend API server running on port 6565","timestamp":"2026-06-15 23:30:00"}
+{"level":"info","message":"MongoDB connected successfully via Mongoose!","timestamp":"2026-06-15 23:30:03"}
+{"level":"warn","message":"Cloudinary environment keys are missing. Uploads will fall back to local data URIs.","timestamp":"2026-06-15 23:30:05"}
+{"level":"info","message":"Shutting down server gracefully...","timestamp":"2026-06-15 23:35:54"}

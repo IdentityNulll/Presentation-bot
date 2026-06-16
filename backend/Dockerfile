@@ -2,22 +2,19 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy packages first for caching
+# Copy all package.json files from monorepo root
+COPY package*.json ./
 COPY backend/package*.json ./backend/
 COPY database/package*.json ./database/
-COPY package*.json ./
+COPY shared/package*.json ./shared/
 
-# Install dependencies
 RUN npm run install:all
 
-# Copy sources
-COPY shared/ ./shared/
-COPY database/ ./database/
+# Copy source
 COPY backend/ ./backend/
-
-# Generate Prisma Client
-RUN npm run db:generate
+COPY database/ ./database/
+COPY shared/ ./shared/
 
 EXPOSE 5000
 
-CMD ["npm", "run", "start:backend"]
+CMD ["node", "backend/index.js"]
