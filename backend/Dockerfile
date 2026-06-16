@@ -2,19 +2,12 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy all package.json files from monorepo root
-COPY package*.json ./
-COPY backend/package*.json ./backend/
-COPY database/package*.json ./database/
-COPY shared/package*.json ./shared/
+COPY backend/package*.json ./
 
-RUN npm run install:all
+RUN npm install --production
 
-# Copy source
-COPY backend/ ./backend/
-COPY database/ ./database/
-COPY shared/ ./shared/
+COPY backend/ ./
 
 EXPOSE 5000
 
-CMD ["node", "backend/index.js"]
+CMD ["node", "server.js"]
