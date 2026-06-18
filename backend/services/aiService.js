@@ -1,320 +1,326 @@
+'use strict';
+/**
+ * AI Service — Production Grade
+ * Gemini 2.5 Flash + OpenRouter with retry, settings cache, schema validation.
+ */
+
 const axios = require('axios');
 const { Setting, logSystemEvent } = require('./dbService');
 const { generateLocalPresentation } = require('../shared/presentationTemplates');
 const logger = require('../utils/logger');
 
-/**
- * Get active system settings.
- */
+// ── Settings Cache ─────────────────────────────────────────────────────────────
+let _cache = null;
+let _cacheExpiry = 0;
+
 async function getSettings() {
+  if (_cache && Date.now() < _cacheExpiry) return _cache;
   try {
-    const settings = await Setting.find();
-    const settingsMap = {};
-    settings.forEach(s => {
-      settingsMap[s.key] = s.value;
-    });
-    return settingsMap;
-  } catch (error) {
-    logger.error('Error fetching settings from DB: %O', error);
-    return {};
+    const rows = await Setting.find();
+    _cache = {};
+    rows.forEach(s => { _cache[s.key] = s.value; });
+    _cacheExpiry = Date.now() + 5 * 60 * 1000; // 5 min TTL
+    return _cache;
+  } catch (err) {
+    logger.error('Settings fetch error: %O', err);
+    return _cache || {};
   }
 }
 
-/**
- * Generates a complete presentation structure using AI or local fallback.
- * @param {string} topic - Topic of presentation
- * @param {string} title - Optional specific title
- * @param {string} audience - Target audience (Students, Teachers, Business, Investors, General)
- * @param {string} style - Presentation style (Modern, Professional, Academic, Startup Pitch, Minimalist, Dark Theme, Creative, Corporate)
- * @param {number} slideCount - Number of slides
- * @param {string} language - Target language
- * @param {string} userId - User Mongoose ObjectId running the generation
- */
-async function generatePresentationStructure(topic, title, audience, style, slideCount = 6, language = 'en', userId = null) {
-  const settings = await getSettings();
-  const provider = settings.AI_PROVIDER || 'local';
-
-  logger.info(`Generating presentation structure. Topic: "${topic}", Provider: ${provider}, Count: ${slideCount}`);
-
-  if (provider === 'local') {
-    logger.info('Using local fallback generation.');
-    await logSystemEvent('AI_GENERATION_LOCAL', `Local presentation generated for topic: ${topic}`, userId);
-    return generateLocalPresentation(topic, title, audience, style, slideCount);
+// ── Retry Helper ───────────────────────────────────────────────────────────────
+async function withRetry(fn, attempts = 2, baseDelay = 1500) {
+  for (let i = 0; i <= attempts; i++) {
+    try { return await fn(); } catch (err) {
+      if (i === attempts) throw err;
+      const wait = baseDelay * Math.pow(2, i);
+      logger.warn(`[AI] Attempt ${i + 1} failed: ${err.message}. Retrying in ${wait}ms`);
+      await new Promise(r => setTimeout(r, wait));
+    }
   }
+}
 
-  const prompt = `
-Generate a professional presentation structure in the "${language}" language. All titles, content bullets, speaker notes, descriptions, and suggested visuals MUST be generated in the "${language}" language (ru for Russian, en for English, uz for Uzbek).
+// ── Valid Types ────────────────────────────────────────────────────────────────
+const VALID_TYPES = new Set([
+  'Cover', 'TwoColumn', 'ImageLeft', 'ImageRight', 'FullImage',
+  'Quote', 'Statistics', 'Timeline', 'Comparison', 'Team', 'Conclusion'
+]);
+
+// ── JSON Extraction ────────────────────────────────────────────────────────────
+function safeParseJson(raw) {
+  if (!raw) return null;
+  const attempts = [
+    () => JSON.parse(raw.trim()),
+    () => {
+      const cleaned = raw.replace(/^```(?:json)?\s*/im, '').replace(/```\s*$/m, '').trim();
+      return JSON.parse(cleaned);
+    },
+    () => {
+      const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+      if (s === -1 || e <= s) throw new Error('No JSON object found');
+      return JSON.parse(raw.slice(s, e + 1));
+    },
+    () => {
+      const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+      const fixed = raw.slice(s, e + 1).replace(/,\s*([}\]])/g, '$1');
+      return JSON.parse(fixed);
+    },
+  ];
+  for (const attempt of attempts) {
+    try { return attempt(); } catch {}
+  }
+  logger.error('[AI] All JSON parse attempts failed. Raw preview: %s', raw.slice(0, 400));
+  return null;
+}
+
+// ── Schema Validation ──────────────────────────────────────────────────────────
+function normalizeSlides(slides, count, topic) {
+  if (!Array.isArray(slides)) return null;
+  return slides.slice(0, count + 2).map((s, idx) => {
+    const type = VALID_TYPES.has(s.type) ? s.type
+      : idx === 0 ? 'Cover'
+      : idx === slides.length - 1 ? 'Conclusion'
+      : 'TwoColumn';
+    return {
+      order: typeof s.order === 'number' ? s.order : idx,
+      type,
+      title: (s.title || `Slide ${idx + 1}`).slice(0, 120),
+      description: (s.description || '').slice(0, 300),
+      content: (s.content || '').slice(0, 1500),
+      speakerNotes: (s.speakerNotes || '').slice(0, 800),
+      imagePrompt: (s.imagePrompt || `Professional illustration for ${topic}`).slice(0, 500),
+      suggestedVisuals: (s.suggestedVisuals || '').slice(0, 300),
+      layoutData: s.layoutData || null,
+      imageUrl: null,
+    };
+  });
+}
+
+// ── Prompt Builder ─────────────────────────────────────────────────────────────
+function buildPrompt(topic, title, audience, style, slideCount, language) {
+  const audienceCtx = {
+    Students: 'Clear explanations, relatable examples, learning objectives.',
+    Teachers: 'Curriculum alignment, pedagogy, assessment strategies.',
+    Business: 'Executive tone, ROI focus, decisions over descriptions.',
+    Investors: 'Pitch deck arc: problem→solution→market→traction→ask.',
+    General: 'Plain language, storytelling, universal relevance.',
+  }[audience] || 'Engaging, professional, broadly accessible.';
+
+  return `You are an expert presentation designer at a top strategy firm.
+Create a ${slideCount}-slide professional deck in "${language}" language. ALL text in that language.
 
 Topic: "${topic}"
-Target Presentation Title: "${title || `Overview of ${topic}`}"
-Audience: ${audience}
-Style/Theme: ${style}
-Number of Slides: ${slideCount}
+Title: "${title}"
+Audience: ${audience} — ${audienceCtx}
+Visual Style: ${style}
 
-You MUST follow these specific slide structure rules:
-1. First slide (order 0) MUST be layout type 'Cover'.
-2. The deck MUST contain at least one Comparison/Table slide (layout type 'Comparison' or 'TwoColumn') that professionally divides the presentation/topic into 3 distinct plans (e.g. Starter/Standard/Premium or Plan A/Plan B/Plan C), outlining features and options.
-3. The deck MUST contain at least one Q&A slide (layout type 'TwoColumn') featuring key questions about the topic and their corresponding answers.
-4. The rest of the slides should be general content slides explaining the topic with professional depth.
+DESIGN RULES:
+- Titles must be action-oriented or insight-driven (never generic like "Introduction")
+- Bullets: max 12 words each, punchy and specific
+- Stats must look data-driven (e.g. "78% adoption rate in Fortune 500")
+- Every slide serves a unique narrative purpose
 
-For each slide, choose the most appropriate layout type from this list:
-- 'Cover' (Used ONLY for the first slide)
-- 'TwoColumn' (Two columns of bullet points)
-- 'ImageLeft' (Image on left side, text/bullets on right)
-- 'ImageRight' (Image on right side, text/bullets on left)
-- 'FullImage' (Slide covered by a background image with overlay text)
-- 'Quote' (Large centered text citing a statement or phrase)
-- 'Statistics' (Showcases large numbers, data points, or charts)
-- 'Timeline' (A progressive sequence of items)
-- 'Comparison' (Table-like or grid comparison of features)
-- 'Team' (Profiles or roles of people)
-- 'Conclusion' (A summary wrap-up, thank you, or call-to-action)
+REQUIRED SLIDE ORDER:
+0 → Cover (hero title, tagline, atmosphere)
+1 → Timeline (agenda: 4-5 phases of this presentation)
+2 → TwoColumn or ImageLeft (core problem/context with evidence)
+3 → TwoColumn or ImageRight (solution/approach with supporting data)
+4 → Statistics (exactly 4 key metrics with real-looking numbers)
+5 → Comparison (3-tier plan: Basic/Standard/Premium with feature rows)
+6 → ImageRight or FullImage (key insight or case study)
+7 → Quote (powerful industry quote with attribution)
+8 → TwoColumn (Q&A: 3 real audience questions + expert answers)
+Last → Conclusion (3 next steps + CTA)
 
-Each slide in the response must contain:
-1. "type": One of the exact slide type string names listed above.
-2. "title": A concise slide title specific to the content in the "${language}" language.
-3. "description": A 1-sentence description of the slide in the "${language}" language.
-4. "content": The slide body text (3-4 bullet points separated by newlines \\n) in the "${language}" language.
-5. "speakerNotes": 2-3 sentences guiding the speaker in the "${language}" language.
-6. "imagePrompt": A detailed descriptive prompt for DALL-E/Unsplash/Pexels to search or generate a relevant background or contextual image. Can be in English for search compatibility.
-7. "suggestedVisuals": Specific keyword or type description for icons/charts/illustrations in the "${language}" language.
+LAYOUT DATA REQUIREMENTS:
+For Statistics: "layoutData": {"stats":[{"value":"94%","label":"Customer satisfaction"},{"value":"$2.4M","label":"Average deal size"},{"value":"3x","label":"Faster deployment"},{"value":"60+","label":"Enterprise clients"}]}
+For Comparison: "layoutData": {"columns":["Basic","Standard","Premium"],"rows":[{"feature":"Feature","values":["❌","✅","✅"]},{"feature":"Support","values":["Email","Priority","Dedicated"]}]}
+For Timeline: "layoutData": {"steps":[{"phase":"Phase 1","label":"Discovery","description":"Define scope"},{"phase":"Phase 2","label":"Build","description":"Development"}]}
 
-Your output MUST be valid JSON, conforming to this exact structure:
+Return ONLY raw JSON (no markdown, no prose):
 {
-  "title": "Overall Presentation Title",
+  "title": "...",
+  "topic": "${topic}",
+  "style": "${style}",
+  "audience": "${audience}",
   "slides": [
     {
       "order": 0,
       "type": "Cover",
-      "title": "Title of Cover Slide",
-      "description": "Short description of slide.",
-      "content": "Bullet point 1\\nBullet point 2",
-      "speakerNotes": "Introductory notes...",
-      "imagePrompt": "Image description for cover background...",
-      "suggestedVisuals": "Suggested visual description..."
-    },
-    ...
+      "title": "...",
+      "description": "One sentence purpose",
+      "content": "Line1\\nLine2\\nLine3",
+      "speakerNotes": "2-3 sentence delivery guide",
+      "imagePrompt": "Ultra-specific English image search prompt",
+      "suggestedVisuals": "Icon/visual description",
+      "layoutData": null
+    }
   ]
+}`;
 }
 
-Ensure the output is raw JSON, do not include any markdown formatting, wrappers, or text outside the JSON block. Do not write "json" inside the code block. Let the output start directly with { and end with }.
-`;
+// ── API Callers ────────────────────────────────────────────────────────────────
+async function callGemini(apiKey, prompt) {
+  const res = await axios.post(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      system_instruction: {
+        parts: [{ text: 'You are an expert presentation designer. Return only valid raw JSON, never markdown.' }]
+      },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.65,
+        maxOutputTokens: 8192,
+      }
+    },
+    { headers: { 'Content-Type': 'application/json' }, timeout: 60000 }
+  );
+  const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Gemini returned empty body');
+  return text;
+}
+
+async function callOpenRouter(apiKey, model, prompt) {
+  const res = await axios.post(
+    'https://openrouter.ai/api/v1/chat/completions',
+    {
+      model,
+      messages: [
+        { role: 'system', content: 'You are an expert presentation designer. Return only valid raw JSON, never markdown.' },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.65,
+      max_tokens: 8192,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': process.env.APP_URL || 'https://slidepaw.app',
+        'X-Title': 'SlidePaw',
+        'Content-Type': 'application/json'
+      },
+      timeout: 60000,
+    }
+  );
+  const text = res.data?.choices?.[0]?.message?.content;
+  if (!text) throw new Error('OpenRouter returned empty body');
+  return text;
+}
+
+// ── Main: Generate Full Presentation ──────────────────────────────────────────
+async function generatePresentationStructure(topic, title, audience, style, slideCount = 9, language = 'en', userId = null) {
+  const settings = await getSettings();
+  const provider = settings.AI_PROVIDER || 'local';
+  const resolvedTitle = title || `${topic}: A Professional Overview`;
+
+  logger.info(`[AI] "${resolvedTitle}" | provider=${provider} | slides=${slideCount}`);
+
+  if (provider === 'local') {
+    await logSystemEvent('AI_GENERATION_LOCAL', `Local: ${topic}`, userId);
+    return generateLocalPresentation(topic, resolvedTitle, audience, style, slideCount);
+  }
+
+  const prompt = buildPrompt(topic, resolvedTitle, audience, style, slideCount, language);
 
   try {
-    let resultJson = null;
-
+    let raw;
     if (provider === 'gemini') {
-      const apiKey = settings.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Gemini API key is not configured.');
-
-      logger.info('Calling Gemini API...');
-      const response = await axios.post(
-        `https://generativetoolkit.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json"
-          }
-        },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-
-      const responseText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      resultJson = parseAndCleanJson(responseText);
+      const key = settings.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      if (!key) throw new Error('GEMINI_API_KEY not set');
+      raw = await withRetry(() => callGemini(key, prompt));
     } else if (provider === 'openrouter') {
-      const apiKey = settings.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY;
+      const key = settings.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY;
       const model = settings.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
-      if (!apiKey) throw new Error('OpenRouter API key is not configured.');
-
-      logger.info(`Calling OpenRouter API (${model})...`);
-      const response = await axios.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        {
-          model: model,
-          messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'HTTP-Referer': 'https://github.com/slidepaw',
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      const responseText = response.data?.choices?.[0]?.message?.content;
-      resultJson = parseAndCleanJson(responseText);
+      if (!key) throw new Error('OPENROUTER_API_KEY not set');
+      raw = await withRetry(() => callOpenRouter(key, model, prompt));
+    } else {
+      throw new Error(`Unknown provider: ${provider}`);
     }
 
-    if (!resultJson || !resultJson.slides || !Array.isArray(resultJson.slides)) {
-      throw new Error('AI returned invalid JSON structure.');
-    }
+    const parsed = safeParseJson(raw);
+    if (!parsed?.slides) throw new Error('AI response missing slides');
 
-    logger.info('AI generation successful.');
-    await logSystemEvent('ai_generation', { message: `AI presentation generated using ${provider} for topic: ${topic}` }, userId);
+    const slides = normalizeSlides(parsed.slides, slideCount, topic);
+    if (!slides?.length) throw new Error('Slide normalization returned empty');
+
+    await logSystemEvent('ai_generation', { provider, topic, slideCount: slides.length }, userId);
+    logger.info(`[AI] Success: ${slides.length} slides`);
 
     return {
-      title: resultJson.title || title || topic,
-      topic: topic,
-      style: style,
-      audience: audience,
-      slides: resultJson.slides.map((s, idx) => ({
-        order: s.order !== undefined ? s.order : idx,
-        type: s.type || (idx === 0 ? 'Cover' : idx === resultJson.slides.length - 1 ? 'Conclusion' : 'TwoColumn'),
-        title: s.title || `Slide ${idx + 1}`,
-        description: s.description || '',
-        content: s.content || '',
-        speakerNotes: s.speakerNotes || '',
-        imagePrompt: s.imagePrompt || '',
-        suggestedVisuals: s.suggestedVisuals || '',
-        imageUrl: null
-      }))
+      title: parsed.title || resolvedTitle,
+      topic,
+      style,
+      audience,
+      slides,
     };
-  } catch (error) {
-    logger.error(`AI generation failed (Provider: ${provider}). Error: ${error.message}. Falling back to local generation.`);
-    await logSystemEvent('error', { message: `AI Generation failed: ${error.message}. Fallback to local.` }, userId);
-    
-    // Fallback
-    return generateLocalPresentation(topic, title, audience, style, slideCount);
+  } catch (err) {
+    logger.error(`[AI] Failed (${provider}): ${err.message} → local fallback`);
+    await logSystemEvent('error', { message: err.message, provider, topic }, userId);
+    return generateLocalPresentation(topic, resolvedTitle, audience, style, slideCount);
   }
 }
 
-/**
- * Regenerate a single slide using AI or local templates.
- */
+// ── Single Slide Regeneration ──────────────────────────────────────────────────
 async function regenerateSingleSlide(topic, audience, style, slideTitle, currentContent, userId = null) {
   const settings = await getSettings();
   const provider = settings.AI_PROVIDER || 'local';
 
-  logger.info(`Regenerating single slide: "${slideTitle}" using ${provider}`);
-
   if (provider === 'local') {
-    const defaultImagePrompt = `Professional slide illustration, style ${style}, showcasing ${slideTitle} for ${topic}.`;
     return {
-      title: slideTitle,
-      content: currentContent || `Key information regarding ${slideTitle} within ${topic}.`,
-      speakerNotes: `Additional commentary regarding ${slideTitle}.`,
-      imagePrompt: defaultImagePrompt,
       type: 'TwoColumn',
-      description: `Refined detail of ${slideTitle}`,
-      suggestedVisuals: `icon of ${slideTitle}`
+      title: slideTitle,
+      description: `Refreshed insight on ${slideTitle}`,
+      content: currentContent || `• Key insight about ${slideTitle}\n• Supporting evidence and data\n• Strategic implication for ${audience}`,
+      speakerNotes: `Discuss implications of ${slideTitle} for ${audience}. Invite questions.`,
+      imagePrompt: `Clean flat illustration of ${slideTitle}, modern design, ${style} style`,
+      suggestedVisuals: `Icon representing ${slideTitle}`,
+      layoutData: null,
     };
   }
 
-  const prompt = `
-We are regenerating a single slide for the presentation on topic: "${topic}".
-Audience: ${audience}
-Style: ${style}
+  const prompt = `Regenerate this presentation slide with significantly improved content.
+Topic: "${topic}" | Audience: ${audience} | Style: ${style}
+Current Title: "${slideTitle}"
+Current Content: "${currentContent}"
 
-Current Slide Title: "${slideTitle}"
-Current Content (if any): "${currentContent}"
+Make it more visual-first, concise, and impactful. Choose best type from: ${[...VALID_TYPES].join(', ')}.
 
-Generate a fresh version of this slide. Choose an appropriate layout type from:
-'Cover', 'TwoColumn', 'ImageLeft', 'ImageRight', 'FullImage', 'Quote', 'Statistics', 'Timeline', 'Comparison', 'Team', 'Conclusion'.
-
-Output ONLY a JSON block like:
-{
-  "type": "TwoColumn",
-  "title": "Refined Slide Title",
-  "description": "Refined slide description.",
-  "content": "Point 1\\nPoint 2\\nPoint 3",
-  "speakerNotes": "Speaker notes details...",
-  "imagePrompt": "Image prompt description...",
-  "suggestedVisuals": "Visual ideas..."
-}
-`;
+Return ONLY JSON (no markdown):
+{"type":"TwoColumn","title":"...","description":"...","content":"Line1\\nLine2\\nLine3","speakerNotes":"...","imagePrompt":"...","suggestedVisuals":"...","layoutData":null}`;
 
   try {
-    let resultJson = null;
-
+    let raw;
     if (provider === 'gemini') {
-      const apiKey = settings.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Gemini API key is not configured.');
-
-      const response = await axios.post(
-        `https://generativetoolkit.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" }
-        },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-
-      const responseText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      resultJson = parseAndCleanJson(responseText);
-    } else if (provider === 'openrouter') {
-      const apiKey = settings.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY;
+      const key = settings.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      raw = await withRetry(() => callGemini(key, prompt));
+    } else {
+      const key = settings.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY;
       const model = settings.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
-      if (!apiKey) throw new Error('OpenRouter API key is not configured.');
-
-      const response = await axios.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        {
-          model: model,
-          messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'HTTP-Referer': 'https://github.com/slidepaw',
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      const responseText = response.data?.choices?.[0]?.message?.content;
-      resultJson = parseAndCleanJson(responseText);
+      raw = await withRetry(() => callOpenRouter(key, model, prompt));
     }
 
-    if (!resultJson) throw new Error('AI returned empty response.');
+    const parsed = safeParseJson(raw);
+    if (!parsed) throw new Error('Empty AI response');
 
     return {
-      type: resultJson.type || 'TwoColumn',
-      title: resultJson.title || slideTitle,
-      description: resultJson.description || '',
-      content: resultJson.content || currentContent,
-      speakerNotes: resultJson.speakerNotes || '',
-      imagePrompt: resultJson.imagePrompt || '',
-      suggestedVisuals: resultJson.suggestedVisuals || ''
+      type: VALID_TYPES.has(parsed.type) ? parsed.type : 'TwoColumn',
+      title: parsed.title || slideTitle,
+      description: parsed.description || '',
+      content: parsed.content || currentContent,
+      speakerNotes: parsed.speakerNotes || '',
+      imagePrompt: parsed.imagePrompt || `Professional illustration for ${slideTitle}`,
+      suggestedVisuals: parsed.suggestedVisuals || '',
+      layoutData: parsed.layoutData || null,
     };
-  } catch (error) {
-    logger.error(`Failed to regenerate single slide. Error: ${error.message}`);
+  } catch (err) {
+    logger.error(`[AI] Single slide regen failed: ${err.message}`);
     return {
-      type: 'TwoColumn',
-      title: slideTitle,
-      description: '',
-      content: currentContent,
-      speakerNotes: 'Slide notes fallback.',
-      imagePrompt: `Flat slide design icon representing ${slideTitle}.`,
-      suggestedVisuals: ''
+      type: 'TwoColumn', title: slideTitle, description: '',
+      content: currentContent, speakerNotes: '', layoutData: null,
+      imagePrompt: `Modern illustration of ${slideTitle}`, suggestedVisuals: '',
     };
   }
 }
 
-/**
- * Utility to clean AI markdown wrapping and parse JSON safely
- */
-function parseAndCleanJson(text) {
-  if (!text) return null;
-  
-  let cleanText = text.trim();
-  if (cleanText.startsWith('```')) {
-    cleanText = cleanText.replace(/^```json\s*/i, '');
-    cleanText = cleanText.replace(/```$/, '');
-    cleanText = cleanText.trim();
-  }
-
-  try {
-    return JSON.parse(cleanText);
-  } catch (e) {
-    logger.error('Failed to parse clean text as JSON: %s. Error: %s', cleanText, e.message);
-    return null;
-  }
-}
-
-module.exports = {
-  generatePresentationStructure,
-  regenerateSingleSlide
-};
+module.exports = { generatePresentationStructure, regenerateSingleSlide };
